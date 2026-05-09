@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
@@ -26,7 +26,7 @@
             border-radius: 12px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 600px;
+            max-width: 650px;
             padding: 40px;
         }
 
@@ -78,6 +78,11 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        input.error, select.error, textarea.error {
+            border-color: #e53e3e;
+            background-color: #fff5f5;
+        }
+
         textarea {
             resize: vertical;
             min-height: 80px;
@@ -109,7 +114,7 @@
             margin-top: 20px;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
@@ -117,43 +122,50 @@
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
         }
 
         .alert {
-            padding: 12px;
+            padding: 14px;
             border-radius: 8px;
             margin-bottom: 20px;
             font-size: 14px;
             display: none;
+            border-left: 4px solid;
         }
 
         .alert.success {
             background: #c6f6d5;
-            border-left: 4px solid #22863a;
+            border-color: #22863a;
             color: #22863a;
             display: block;
         }
 
         .alert.error {
             background: #fed7d7;
-            border-left: 4px solid #cb2431;
+            border-color: #cb2431;
             color: #cb2431;
+            display: block;
+        }
+
+        .alert.info {
+            background: #bee3f8;
+            border-color: #1e40af;
+            color: #1e40af;
             display: block;
         }
 
         .loading {
             display: none;
             text-align: center;
-            margin: 20px 0;
+            margin: 15px 0;
         }
 
         .spinner {
             border: 3px solid #e2e8f0;
             border-top: 3px solid #667eea;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            width: 24px;
+            height: 24px;
             animation: spin 1s linear infinite;
             margin: 0 auto;
         }
@@ -162,13 +174,34 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .success-message {
+            text-align: center;
+            display: none;
+        }
+
+        .success-message svg {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            color: #22863a;
+        }
+
+        .success-message h2 {
+            color: #22863a;
+            margin-bottom: 10px;
+        }
+
+        .success-message p {
+            color: #718096;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 Registro de Problemas</h1>
-            <p>Problemas por Molde - SmartMold EP</p>
+            <h1>📋 Registro de Problemas</h1>
+            <p>Sistema SmartMold EP - Problemas por Molde</p>
         </div>
 
         <div class="alert" id="alert"></div>
@@ -228,11 +261,21 @@
                 <input type="text" id="tecnico" name="tecnico" required placeholder="Nombre del técnico responsable">
             </div>
 
-            <button type="submit">Enviar Reporte</button>
+            <button type="submit" id="submitBtn">Enviar Reporte</button>
         </form>
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #718096;">Enviando datos...</p>
+        </div>
+
+        <div class="success-message" id="successMessage">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2>¡Registro guardado!</h2>
+            <p>Los datos se han guardado correctamente en la base de datos.</p>
+            <button type="button" onclick="location.reload()" style="margin-top: 20px; background: #22863a;">Nuevo Registro</button>
         </div>
     </div>
 
@@ -240,59 +283,95 @@
         // Set today's date as default
         document.getElementById('fecha').valueAsDate = new Date();
 
+        function showAlert(message, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = message;
+            alert.className = `alert ${type}`;
+        }
+
         document.getElementById('problemForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const form = document.getElementById('problemForm');
+            const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
-            const alert = document.getElementById('alert');
+            const successMessage = document.getElementById('successMessage');
+
+            // Hide previous messages
+            document.getElementById('alert').style.display = 'none';
+            successMessage.style.display = 'none';
+
+            // Validate form
+            const fields = ['id_molde', 'fecha', 'problema', 'diagnostico', 'accion', 'estado', 'severidad', 'tecnico'];
+            let isValid = true;
+
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    field.classList.add('error');
+                    isValid = false;
+                } else {
+                    field.classList.remove('error');
+                }
+            });
+
+            if (!isValid) {
+                showAlert('⚠️ Por favor completa todos los campos requeridos', 'error');
+                return;
+            }
 
             // Show loading
             submitBtn.disabled = true;
             loading.style.display = 'block';
-            alert.style.display = 'none';
 
             try {
                 // Collect form data
                 const formData = {
-                    id_molde: document.getElementById('id_molde').value,
-                    fecha: document.getElementById('fecha').value,
-                    problema: document.getElementById('problema').value,
-                    diagnostico: document.getElementById('diagnostico').value,
-                    accion: document.getElementById('accion').value,
-                    estado: document.getElementById('estado').value,
-                    severidad: document.getElementById('severidad').value,
-                    tecnico: document.getElementById('tecnico').value
+                    id_molde: document.getElementById('id_molde').value.trim(),
+                    fecha: document.getElementById('fecha').value.trim(),
+                    problema: document.getElementById('problema').value.trim(),
+                    diagnostico: document.getElementById('diagnostico').value.trim(),
+                    accion: document.getElementById('accion').value.trim(),
+                    estado: document.getElementById('estado').value.trim(),
+                    severidad: document.getElementById('severidad').value.trim(),
+                    tecnico: document.getElementById('tecnico').value.trim()
                 };
 
-                const SCRIPT_URL = "https://script.googleapis.com/macros/s/AKfycbw4bP36F2qWvAafOaElC0XWZeu1MHXdDo-3bUa4CjW-vBb2D3Tv3S4SJq5-qnQrcHrl/exec";
+                console.log('Sending data:', formData);
+
+                // Send to Google Apps Script
+                const SCRIPT_URL = "https://script.googleapis.com/macros/s/AKfycbyne_oj6N5_DxKLBEoboHI3tAGVwZDCP4WnuhB_Jc9XFo8oI3QqeJC80e_FcTp2w24/exec";
 
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
                     body: JSON.stringify(formData),
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
                 });
 
                 const result = await response.json();
+                console.log('Response:', result);
 
                 if (result.success) {
-                    alert.className = 'alert success';
-                    alert.textContent = '✓ ' + result.message;
-                    document.getElementById('problemForm').reset();
-                    document.getElementById('fecha').valueAsDate = new Date();
+                    // Show success
+                    loading.style.display = 'none';
+                    form.style.display = 'none';
+                    successMessage.style.display = 'block';
                 } else {
-                    alert.className = 'alert error';
-                    alert.textContent = '✗ Error: ' + result.error;
+                    throw new Error(result.error || 'Error desconocido');
                 }
+
             } catch (error) {
-                alert.className = 'alert error';
-                alert.textContent = '✗ Error al enviar: ' + error.message;
-            } finally {
-                submitBtn.disabled = false;
+                console.error('Error:', error);
                 loading.style.display = 'none';
+                showAlert('❌ Error: ' + error.message, 'error');
+                submitBtn.disabled = false;
             }
+        });
+
+        // Remove error class on input change
+        document.querySelectorAll('input, select, textarea').forEach(field => {
+            field.addEventListener('change', () => {
+                field.classList.remove('error');
+            });
         });
     </script>
 </body>
