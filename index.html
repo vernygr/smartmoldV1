@@ -4349,11 +4349,12 @@ setInterval(() => { if (SHEETS_URL) loadFromSheets(true); }, 5 * 60 * 1000);
 
 // Para agregar o cambiar usuarios, edita este objeto:
 const USERS = {
-  'admin':      'electroplast2025',
-  'operador':   'ep1234',
-  'tecnico':    'molde2025',
-  'supervisor': 'super2025',
+  'admin':      'Verny48gut.',
+  'soporte':    'electro123',
 };
+
+// Definir qué usuarios son admin
+const ADMIN_USERS = ['admin'];
 
 function doLogin() {
   const user = (document.getElementById('lg-u').value || '').trim().toLowerCase();
@@ -4368,6 +4369,7 @@ function doLogin() {
     sessionStorage.setItem('sm_logged', '1');
     sessionStorage.setItem('sm_user', user);
     document.getElementById('status-sync').textContent = '👤 ' + user;
+    updateAdminAccess(user);
   } else {
     err.style.display = 'block';
     err.style.animation = 'none';
@@ -4378,11 +4380,30 @@ function doLogin() {
   }
 }
 
+// Controlar acceso a Admin según el usuario
+function updateAdminAccess(user) {
+  const isAdmin = ADMIN_USERS.includes(user);
+
+  // Ocultar/mostrar botones de Admin en navegación
+  const adminButtons = document.querySelectorAll('[onclick*="showPage(\'admin\')"]');
+  adminButtons.forEach(btn => {
+    btn.style.display = isAdmin ? 'block' : 'none';
+  });
+
+  // Ocultar/mostrar sección de Admin
+  const adminPage = document.getElementById('page-admin');
+  if (adminPage) {
+    adminPage.style.display = isAdmin ? 'none' : 'none'; // Siempre oculto hasta que lo muestren
+  }
+}
+
 // Si ya hay sesión activa en esta pestaña, quitar el login
 (function() {
   if (sessionStorage.getItem('sm_logged') === '1') {
     var s = document.getElementById('login-screen');
     if (s) s.remove();
+    var user = sessionStorage.getItem('sm_user');
+    if (user) updateAdminAccess(user);
   } else {
     // Auto-focus al usuario
     setTimeout(function() {
